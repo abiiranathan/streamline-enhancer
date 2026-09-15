@@ -5,6 +5,8 @@
   var SESSION_KEY = "myVar";
   var MAX_RECENT = 8;
   var FALLBACK_URL = "/consultation/route";
+  var WARD_DISPENSING_URL =
+    "https://berakhah.streamlinehealth.tech/ward_dispensing_per_chart";
 
   /* ------------------------------------------------------------------ */
   /* Storage helpers                                                     */
@@ -76,6 +78,41 @@
   function inputValue(id) {
     var el = document.getElementById(id);
     return el && typeof el.value === "string" ? el.value.trim() : "";
+  }
+
+  /* An episode id is a non-zero number. */
+  function validId(value) {
+    var str = String(value == null ? "" : value).trim();
+    if (!str || str === "0") return "";
+    var match = /\d+/.exec(str);
+    if (!match || match[0] === "0") return "";
+    return match[0];
+  }
+
+  /* The episode radios sometimes carry value="0" while the real id lives in
+     the element id ("episode_id_4650") or the onchange handler
+     ("showOnly('4650', ...)"). Resolve it from any of those. */
+  function episodeIdFromRadio(radio) {
+    var fromValue = validId(radio.value);
+    if (fromValue) return fromValue;
+
+    var idMatch = /(\d+)\s*$/.exec(radio.id || "");
+    if (idMatch && validId(idMatch[1])) return idMatch[1];
+
+    var onchange = radio.getAttribute("onchange") || "";
+    var showMatch = /showOnly\(\s*['"]?(\d+)/.exec(onchange);
+    if (showMatch && validId(showMatch[1])) return showMatch[1];
+
+    return validId(radio.getAttribute("data-episode-id")) || "";
+  }
+
+  function idFromUrl(url) {
+    var str = String(url || "");
+    var match =
+      /episode_id=(\d+)/.exec(str) ||
+      /episode_summary\/(\d+)/.exec(str) ||
+      /\/patient_episodes\/(\d+)/.exec(str);
+    return match ? validId(match[1]) : "";
   }
 
   /* Reject values that are clearly not a person's name (e.g. the episode
@@ -163,7 +200,7 @@
       name: name,
       number: number,
       patientId: inputValue("current_patient_id"),
-      episodeId: inputValue("current_episode_id") || readSessionVar(),
+      episodeId: validId(inputValue("current_episode_id")) || validId(readSessionVar()),
       source: currentSource(),
       url: window.location.href
     };
@@ -208,6 +245,26 @@
   function openPatient(entry) {
     if (entry.episodeId) writeSessionVar(entry.episodeId);
     window.location.href = entry.url || FALLBACK_URL;
+  }
+
+  /* Episode summary renders a printable PDF. The trailing id is the same
+     value the system keeps in sessionStorage.myVar. */
+  function episodeSummaryUrl(entry) {
+    var id = validId(entry.episodeId) || idFromUrl(entry.url) || validId(readSessionVar());
+    if (!id) return "";
+    return "/patients/episode_summary/" + encodeURIComponent(id);
+  }
+
+  function buildActionLink(href, glyph, title, patientName, extraClass) {
+    var link = document.createElement("a");
+    link.className = "sl-recent-action " + extraClass;
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.title = title;
+    link.setAttribute("aria-label", title + " for " + patientName);
+    link.textContent = glyph;
+    return link;
   }
 
   /* ------------------------------------------------------------------ */
@@ -319,9 +376,12 @@
     }
 
     list.forEach(function (entry) {
-      var item = document.createElement("button");
-      item.type = "button";
+      var item = document.createElement("div");
       item.className = "sl-recent-item";
+
+      var open = document.createElement("button");
+      open.type = "button";
+      open.className = "sl-recent-open";
 
       var info = document.createElement("span");
       info.className = "sl-recent-info";
@@ -338,19 +398,45 @@
         info.appendChild(number);
       }
 
-      item.appendChild(info);
+      open.appendChild(info);
 
       var label = sourceLabel(entry.source);
       if (label) {
         var badge = document.createElement("span");
         badge.className = "sl-recent-source sl-recent-source-" + entry.source;
         badge.textContent = label;
-        item.appendChild(badge);
+        open.appendChild(badge);
       }
 
-      item.addEventListener("click", function () {
+      open.addEventListener("click", function () {
         openPatient(entry);
       });
+      item.appendChild(open);
+
+      var summaryUrl = episodeSummaryUrl(entry);
+      if (summaryUrl) {
+        item.appendChild(
+          buildActionLink(
+            summaryUrl,
+            "📄",
+            "Episode summary (PDF)",
+            entry.name,
+            "sl-recent-pdf"
+          )
+        );
+      }
+
+      if (entry.source === "consultation") {
+        item.appendChild(
+          buildActionLink(
+            WARD_DISPENSING_URL,
+            "💊",
+            "Ward dispensing per chart",
+            entry.name,
+            "sl-recent-ward"
+          )
+        );
+      }
 
       listEl.appendChild(item);
     });
@@ -369,8 +455,11 @@
 
       /* Give the page's own onchange handler a tick to set myVar. */
       window.setTimeout(function () {
-        if (!readSessionVar() && target.value) {
-          writeSessionVar(target.value);
+        var episodeId =
+          episodeIdFromRadio(target) || validId(readSessionVar()) || "";
+
+        if (!validId(readSessionVar()) && episodeId) {
+          writeSessionVar(episodeId);
         }
 
         var row = target.closest("tr");
@@ -416,7 +505,7 @@
           name: chosen.name,
           number: "",
           patientId: "",
-          episodeId: target.value || readSessionVar(),
+          episodeId: episodeId,
           source: currentSource(),
           url: url || window.location.href
         });

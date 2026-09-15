@@ -99,14 +99,26 @@
 .sl-recent-item {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+}
+
+.sl-recent-item:last-child {
+  border-bottom: 0;
+}
+
+.sl-recent-open {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  width: 100%;
-  padding: 10px 14px;
+  min-width: 0;
+  padding: 10px 12px 10px 14px;
   border: 0;
-  border-bottom: 1px solid #f1f5f9;
-  background: #ffffff;
+  background: transparent;
   color: #0f172a;
   font: inherit;
   text-align: left;
@@ -114,23 +126,47 @@
   transition: background 0.1s ease;
 }
 
+.sl-recent-open:hover {
+  background: #f8fafc;
+}
+
+.sl-recent-action {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 0 12px;
+  border-left: 1px solid #f1f5f9;
+  background: transparent;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.sl-recent-pdf:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.sl-recent-ward:hover {
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.sl-recent-open:focus-visible,
+.sl-recent-action:focus-visible {
+  outline: 2px solid #64748b;
+  outline-offset: -2px;
+}
+
 .sl-recent-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-.sl-recent-item:last-child {
-  border-bottom: 0;
-}
-
-.sl-recent-item:hover {
-  background: #f8fafc;
-}
-
-.sl-recent-item:focus-visible {
-  outline: 2px solid #64748b;
-  outline-offset: -2px;
 }
 
 .sl-recent-name {

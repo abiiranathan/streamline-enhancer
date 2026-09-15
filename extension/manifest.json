@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Streamline Dispense Quantity Fix",
-  "version": "1.4.0",
-  "description": "Prescription page fixes, clerkship diagnosis search matching, and a cross-page recent-patients panel built from the clerkship patient name and the myVar session selection.",
+  "version": "1.5.0",
+  "description": "Prescription page fixes, clerkship diagnosis search matching, a cross-page recent-patients panel, and printable ward prescription modals.",
   "permissions": ["scripting"],
   "host_permissions": ["*://*.streamlinehealth.tech/*"],
   "background": {
@@ -14,6 +14,12 @@
       "js": ["content.js", "recent-patients.js"],
       "css": ["styles.css", "recent-patients.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.streamlinehealth.tech/ward_dispensing_per_chart*"],
+      "js": ["ward-print.js"],
+      "css": ["ward-print.css"],
+      "run_at": "document_start"
     }
   ]
 }

@@ -1,3 +1,4 @@
 # Saved live-page dumps - contain patient data and CSRF tokens, never commit
 /prescription_page.html
 /clerkship_page.html
+/ward_dispensing_per_chart_request.html

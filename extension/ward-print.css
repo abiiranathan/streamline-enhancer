@@ -1,0 +1,177 @@
+/* ==========================================================================
+   Ward dispensing page - printable prescription modal
+   ward-print.js moves #showPatientPrescriptionModal directly under <body>
+   while it is open, so we can hide every other top-level element (including
+   the very tall ward chart behind it) and print a single page.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   On-screen modal (ward page only). These rules also apply while printing,
+   unless a rule below explicitly overrides them.
+   -------------------------------------------------------------------------- */
+
+#showPatientPrescriptionModal .modal-header {
+  border-bottom: 0 !important;
+  background: transparent !important;
+}
+
+#showPatientPrescriptionModal .modal-title {
+  border-bottom: 0 !important;
+  color: #0f172a;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Remove any horizontal rules inside the modal. */
+#showPatientPrescriptionModal hr {
+  display: none !important;
+  border: 0 !important;
+}
+
+#showPatientPrescriptionModal .modal-body {
+  padding-top: 12px;
+}
+
+#showPatientPrescriptionModal table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 0 !important;
+  font-size: 13px;
+}
+
+#showPatientPrescriptionModal thead th {
+  padding: 8px 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Body rows stay plain: black on white, no striping. */
+#showPatientPrescriptionModal tbody,
+#showPatientPrescriptionModal tbody tr,
+#showPatientPrescriptionModal tbody td {
+  background: #ffffff !important;
+}
+
+#showPatientPrescriptionModal tbody td {
+  padding: 8px 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #000000 !important;
+  vertical-align: top;
+}
+
+@page {
+  size: auto;
+  margin: 8mm;
+}
+
+/* --------------------------------------------------------------------------
+   Print only: single page, everything except the modal removed. Text is
+   forced black, but the custom table colours/borders are preserved.
+   -------------------------------------------------------------------------- */
+
+@media print {
+  html.sl-printing,
+  html.sl-printing body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  /* Remove everything except the modal itself. */
+  html.sl-printing body > *:not(#showPatientPrescriptionModal) {
+    display: none !important;
+  }
+
+  /* Maximise the modal, clipped to a single page. */
+  html.sl-printing #showPatientPrescriptionModal {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: 250mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    z-index: auto !important;
+    background: #ffffff !important;
+  }
+
+  /* Keep the custom background colours when printing. */
+  html.sl-printing #showPatientPrescriptionModal,
+  html.sl-printing #showPatientPrescriptionModal * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html.sl-printing #showPatientPrescriptionModal .modal-dialog {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  html.sl-printing #showPatientPrescriptionModal .modal-content {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    max-height: 250mm !important;
+    overflow: hidden !important;
+  }
+
+  html.sl-printing #showPatientPrescriptionModal .modal-body {
+    max-height: 225mm !important;
+    overflow: hidden !important;
+  }
+
+  /* Force readable black text, but do not touch backgrounds/borders so the
+     custom table styling above still shows. */
+  html.sl-printing #showPatientPrescriptionModal,
+  html.sl-printing #showPatientPrescriptionModal * {
+    color: #000000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  html.sl-printing #showPatientPrescriptionModal .modal-header,
+  html.sl-printing #showPatientPrescriptionModal .modal-body {
+    padding: 8px 0 !important;
+  }
+
+  /* The close button is meaningless on paper. */
+  html.sl-printing #showPatientPrescriptionModal .close {
+    display: none !important;
+  }
+
+  /* Only the header keeps its styling in print. */
+  html.sl-printing #showPatientPrescriptionModal thead th {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Body stays plain black on white. */
+  html.sl-printing #showPatientPrescriptionModal tbody,
+  html.sl-printing #showPatientPrescriptionModal tbody tr,
+  html.sl-printing #showPatientPrescriptionModal tbody td {
+    background: #ffffff !important;
+  }
+
+  html.sl-printing #showPatientPrescriptionModal tbody td {
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+  }
+}
