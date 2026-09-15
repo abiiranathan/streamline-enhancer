@@ -7,6 +7,30 @@
 
   var originalParent = null;
   var originalNext = null;
+  var patientName = "";
+
+  /* The patient name is the cell that also holds the "Date Of Admission"
+     note; fall back to the second cell of the row. */
+  function patientNameFromRow(row) {
+    if (!row) return "";
+    var marker = row.querySelector("small");
+    var cell = marker ? marker.closest("td") : null;
+    if (!cell) {
+      var cells = row.querySelectorAll("td");
+      cell = cells.length > 1 ? cells[1] : null;
+    }
+    if (!cell) return "";
+
+    var clone = cell.cloneNode(true);
+    Array.prototype.forEach.call(clone.querySelectorAll("small"), function (node) {
+      if (node.parentNode) node.parentNode.removeChild(node);
+    });
+
+    return clone.textContent
+      .replace(/\s+/g, " ")
+      .replace(/\s*\([^)]*\)\s*$/, "")
+      .trim();
+  }
 
   function getModal() {
     return document.getElementById(MODAL_ID);
@@ -44,8 +68,10 @@
   function setTitle(modal) {
     if (!modal) return;
     var title = modal.querySelector(".modal-title");
-    if (title && title.textContent.trim() !== MODAL_TITLE) {
-      title.textContent = MODAL_TITLE;
+    if (!title) return;
+    var text = patientName ? MODAL_TITLE + " - " + patientName : MODAL_TITLE;
+    if (title.textContent.trim() !== text) {
+      title.textContent = text;
     }
   }
 
@@ -57,6 +83,7 @@
       document.documentElement.classList.add(ROOT_CLASS);
     } else {
       document.documentElement.classList.remove(ROOT_CLASS);
+      patientName = "";
       if (modal) restore(modal);
     }
   }
@@ -67,6 +94,19 @@
     var observer = new MutationObserver(sync);
     observer.observe(modal, { attributes: true, attributeFilter: ["class", "style"] });
   }
+
+  /* Capture the patient name from the row whose "View Ward Prescription"
+     button was clicked, before the modal opens. */
+  document.addEventListener(
+    "click",
+    function (event) {
+      var target = event.target;
+      var button = target && target.closest ? target.closest(".viewPrescription") : null;
+      if (!button) return;
+      patientName = patientNameFromRow(button.closest("tr"));
+    },
+    true
+  );
 
   window.addEventListener("beforeprint", sync);
 

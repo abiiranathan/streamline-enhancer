@@ -200,44 +200,49 @@
       name: name,
       number: number,
       patientId: inputValue("current_patient_id"),
-      episodeId: validId(inputValue("current_episode_id")) || validId(readSessionVar()),
+      episodeId: validId(inputValue("current_episode_id")),
       source: currentSource(),
       url: window.location.href
     };
   }
 
-  function sameEntry(entry, patient) {
-    var source = patient.source || "";
-    if (patient.episodeId && entry.episodeId) {
-      return (
-        String(entry.episodeId) === String(patient.episodeId) &&
-        (entry.source || "") === source
-      );
-    }
-    return (
-      entry.name === patient.name &&
-      (entry.number || "") === (patient.number || "") &&
-      (entry.source || "") === source
-    );
+  /* A patient is identified by name + number. Never by episode id, which can
+     be stale (myVar) and would make one patient overwrite another. */
+  function samePatient(entry, patient) {
+    var entryName = normalize(entry.name);
+    var patientName = normalize(patient.name);
+    if (!entryName || !patientName || entryName !== patientName) return false;
+
+    var entryNumber = normalize(entry.number);
+    var patientNumber = normalize(patient.number);
+    if (!entryNumber || !patientNumber) return true;
+    return entryNumber === patientNumber;
   }
 
   function remember(patient) {
     if (!patient || !patient.name) return;
 
-    var list = readRecents().filter(function (entry) {
-      return !sameEntry(entry, patient);
-    });
+    var list = readRecents();
+    var existingIndex = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (samePatient(list[i], patient)) {
+        existingIndex = i;
+        break;
+      }
+    }
 
-    list.unshift({
+    var previous = existingIndex >= 0 ? list.splice(existingIndex, 1)[0] : {};
+    var entry = {
       name: patient.name,
-      number: patient.number || "",
-      patientId: patient.patientId || "",
-      episodeId: patient.episodeId || "",
-      source: patient.source || currentSource(),
-      url: patient.url || window.location.href,
+      number: patient.number || previous.number || "",
+      patientId: patient.patientId || previous.patientId || "",
+      episodeId: validId(patient.episodeId) || validId(previous.episodeId) || "",
+      source: patient.source || previous.source || currentSource(),
+      url: patient.url || previous.url || window.location.href,
       ts: Date.now()
-    });
+    };
 
+    list.unshift(entry);
     writeRecents(list);
     render();
   }
@@ -341,9 +346,25 @@
     toggle.appendChild(label);
     toggle.appendChild(count);
 
-    toggle.addEventListener("click", function () {
-      var open = root.classList.toggle("sl-recent-open");
+    function setOpen(open) {
+      root.classList.toggle("sl-recent-open", open);
       toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+
+    toggle.addEventListener("click", function () {
+      setOpen(!root.classList.contains("sl-recent-open"));
+    });
+
+    /* Close when clicking anywhere outside the panel. */
+    document.addEventListener("click", function (event) {
+      if (!root.classList.contains("sl-recent-open")) return;
+      if (root.contains(event.target)) return;
+      setOpen(false);
+    });
+
+    /* Close on Escape as well. */
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") setOpen(false);
     });
 
     root.appendChild(panel);
