@@ -1,0 +1,429 @@
+/* ==========================================================================
+   Streamline Dispense Quantity Fix - Light slate EMR skin
+   Scoped to the prescription builder (#payments_items) so the rest of the
+   application keeps its original look.
+   ========================================================================== */
+
+#payments_items {
+  --sl-50: #f8fafc;
+  --sl-100: #f1f5f9;
+  --sl-200: #e2e8f0;
+  --sl-300: #cbd5e1;
+  --sl-400: #94a3b8;
+  --sl-500: #64748b;
+  --sl-600: #475569;
+  --sl-700: #334155;
+  --sl-800: #1e293b;
+  --sl-900: #0f172a;
+
+  --sl-bg: #f8fafc;
+  --sl-panel: #ffffff;
+  --sl-border: #e2e8f0;
+  --sl-border-strong: #cbd5e1;
+  --sl-text: #0f172a;
+  --sl-text-soft: #475569;
+  --sl-muted: #64748b;
+  --sl-accent: #334155;
+  --sl-accent-hover: #1e293b;
+
+  margin: 4px 0 18px;
+  padding: 0px;
+  border: none;
+  border-radius: 10px;
+  background: var(--sl-panel);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
+  color: var(--sl-text);
+  font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --------------------------------------------------------------------------
+   Table
+   -------------------------------------------------------------------------- */
+#payments_items table.table {
+  width: 100%;
+  margin: 10px 0 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+
+#payments_items thead th {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 10px 12px;
+  border: 1px solid var(--sl-border-strong);
+  border-radius: 0px;
+  background: var(--sl-100);
+  color: var(--sl-700);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+
+#payments_items tbody.input_fields_wrap>tr {
+  background: var(--sl-panel);
+  transition: background 0.12s ease;
+}
+
+#payments_items tbody.input_fields_wrap>tr:nth-child(even) {
+  background: var(--sl-50);
+}
+
+#payments_items tbody.input_fields_wrap>tr:hover {
+  background: #eef2f7;
+}
+
+#payments_items tbody.input_fields_wrap>tr>td {
+  padding: 12px;
+  border: 1px solid var(--sl-border);
+  border-top: 0;
+  border-radius: 0;
+  vertical-align: top;
+}
+
+#payments_items tbody.input_fields_wrap>tr:last-child>td {
+  border-radius: 0 0 8px 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Form controls
+   -------------------------------------------------------------------------- */
+#payments_items .form-control {
+  height: auto;
+  min-height: 38px;
+  padding: 8px 10px;
+  color: var(--sl-text);
+  background: #ffffff;
+  border: 1px solid var(--sl-border-strong);
+  border-radius: 6px;
+  box-shadow: none;
+  font-size: 14px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+#payments_items .form-control::placeholder {
+  color: var(--sl-400);
+}
+
+#payments_items .form-control:focus {
+  background: #ffffff;
+  border-color: var(--sl-accent);
+  box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.12);
+  outline: none;
+}
+
+#payments_items .item_dispense,
+#payments_items .item_price {
+  font-weight: 600;
+  text-align: center;
+  color: var(--sl-900);
+}
+
+#payments_items .item_dispense {
+  background: #f8fafc;
+}
+
+#payments_items .item_dispense:focus {
+  background: #ffffff;
+}
+
+#payments_items .item_price {
+  background: var(--sl-50);
+  color: var(--sl-800);
+}
+
+#payments_items select.form-control option {
+  color: var(--sl-text);
+}
+
+#payments_items label {
+  color: var(--sl-text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+#payments_items hr {
+  border-color: var(--sl-border);
+  margin: 10px 0;
+}
+
+/* select2 (drug picker) */
+#payments_items .select2-container--default .select2-selection--single {
+  height: 38px;
+  background: #ffffff;
+  border: 1px solid var(--sl-border-strong);
+  border-radius: 6px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+#payments_items .select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 36px;
+  color: var(--sl-text);
+  padding-left: 10px;
+}
+
+#payments_items .select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 36px;
+}
+
+#payments_items .select2-container--default.select2-container--focus .select2-selection--single,
+#payments_items .select2-container--default.select2-container--open .select2-selection--single {
+  border-color: var(--sl-accent);
+  box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.12);
+}
+
+#payments_items .select2-dropdown {
+  background: #ffffff;
+  border: 1px solid var(--sl-border-strong);
+  border-radius: 6px;
+  color: var(--sl-text);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+#payments_items .select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background: var(--sl-700);
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+#payments_items .btn {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0;
+  box-shadow: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+#payments_items .add_item.btn-success,
+#payments_items .add_item {
+  color: #ffffff !important;
+  background: var(--sl-700);
+  border-color: var(--sl-700);
+}
+
+#payments_items .add_item:hover {
+  background: var(--sl-accent-hover);
+  border-color: var(--sl-accent-hover);
+}
+
+#payments_items .remove_field.btn-danger {
+  color: #b91c1c !important;
+  background: #ffffff;
+  border-color: var(--sl-border-strong);
+}
+
+#payments_items .remove_field.btn-danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+/* progressive treatment toggle */
+#setup_progressive_treatment_button.label-primary {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid var(--sl-border-strong);
+  color: var(--sl-700);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+#setup_progressive_treatment_button.label-primary:hover {
+  background: var(--sl-100);
+  border-color: var(--sl-400);
+  color: var(--sl-900);
+}
+
+/* --------------------------------------------------------------------------
+   Totals
+   -------------------------------------------------------------------------- */
+#itemGrandTotal,
+#firstDoseGrandTotal {
+  color: var(--sl-900);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Scrollbar
+   -------------------------------------------------------------------------- */
+#payments_items ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+#payments_items ::-webkit-scrollbar-track {
+  background: var(--sl-100);
+}
+
+#payments_items ::-webkit-scrollbar-thumb {
+  background: var(--sl-300);
+  border-radius: 999px;
+}
+
+#payments_items ::-webkit-scrollbar-thumb:hover {
+  background: var(--sl-400);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+/* Tablet: tighten spacing */
+@media (max-width: 1199px) {
+  #payments_items {
+    padding: 12px;
+  }
+
+  #payments_items thead th {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  #payments_items tbody.input_fields_wrap>tr>td {
+    padding: 10px;
+  }
+}
+
+/* Small tablet: let the row scroll horizontally instead of squashing */
+@media (max-width: 991px) {
+  #payments_items {
+    overflow-x: auto;
+  }
+
+  #payments_items table.table {
+    min-width: 960px;
+  }
+}
+
+/* Phones: turn every drug row into a stacked card */
+@media (max-width: 767px) {
+  #payments_items {
+    padding: 10px;
+    overflow-x: visible;
+    border-radius: 8px;
+  }
+
+  #payments_items thead {
+    display: none;
+  }
+
+  #payments_items table.table {
+    min-width: 0;
+  }
+
+  #payments_items tbody.input_fields_wrap>tr {
+    display: block;
+    margin-bottom: 12px;
+    padding: 6px;
+    border: 1px solid var(--sl-border-strong);
+    border-radius: 8px;
+    background: #ffffff;
+  }
+
+  #payments_items tbody.input_fields_wrap>tr:nth-child(even) {
+    background: var(--sl-50);
+  }
+
+  #payments_items tbody.input_fields_wrap>tr:hover {
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+  }
+
+  #payments_items tbody.input_fields_wrap>tr>td {
+    display: block;
+    padding: 6px 4px;
+    border: 0;
+    border-radius: 0;
+  }
+
+  /* Stack the Bootstrap grid inside each row */
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"],
+  #payments_items tbody.input_fields_wrap tr>td>.row>.col-3 .row>[class*="col-"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Field labels, injected with CSS so no markup changes are needed */
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--sl-600);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(1)::before {
+    content: "Drug / Dosage";
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(2)::before {
+    content: "Duration";
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(3)::before {
+    content: "Dispense / Pharmacy";
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(4)::before {
+    content: "First Dispense Quantity";
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(5)::before {
+    content: "First Dispense Duration";
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(6)::before {
+    content: "Price";
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(7)::before {
+    content: "Instructions";
+  }
+
+  #payments_items tbody.input_fields_wrap tr>td>.row>[class*="col-"]:nth-child(8)::before {
+    content: "";
+  }
+
+  /* The "Add row" footer row loses its card look */
+  #payments_items>table>tr {
+    display: block;
+  }
+
+  #payments_items>table>tr>td {
+    display: block;
+    padding: 6px 4px;
+    border: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  #payments_items {
+    padding: 8px;
+  }
+
+  #payments_items .form-control {
+    min-height: 42px;
+    font-size: 16px;
+    /* avoids iOS zoom-on-focus */
+  }
+}

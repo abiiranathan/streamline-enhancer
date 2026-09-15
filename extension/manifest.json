@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Streamline Dispense Quantity Fix",
+  "version": "1.3.0",
+  "description": "Prescription page: editable dispense quantity with automatic totals and a light slate skin. Clerkship page: defaults attendance to New and matches diagnosis searches case-insensitively.",
+  "permissions": ["scripting"],
+  "host_permissions": ["*://*.streamlinehealth.tech/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.streamlinehealth.tech/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
