@@ -37,15 +37,6 @@
     }
   }
 
-  function writeSessionVar(value) {
-    if (value == null || value === "") return;
-    try {
-      window.sessionStorage.setItem(SESSION_KEY, String(value));
-    } catch (error) {
-      /* storage unavailable - ignore */
-    }
-  }
-
   /* ------------------------------------------------------------------ */
   /* Patient extraction                                                  */
   /* ------------------------------------------------------------------ */
@@ -121,10 +112,8 @@
 
   function idFromUrl(url) {
     var str = String(url || "");
-    var match =
-      /episode_id=(\d+)/.exec(str) ||
-      /episode_summary\/(\d+)/.exec(str) ||
-      /\/patient_episodes\/(\d+)/.exec(str);
+    /* Only real episode id patterns - "/patient_episodes/<id>" is a patient id. */
+    var match = /episode_id=(\d+)/.exec(str) || /episode_summary\/(\d+)/.exec(str);
     return match ? validId(match[1]) : "";
   }
 
@@ -261,16 +250,37 @@
       }
     }
 
-    var previous = existingIndex >= 0 ? list.splice(existingIndex, 1)[0] : {};
-    var entry = {
-      name: patient.name,
-      number: cleanPatientNumber(patient.number) || cleanPatientNumber(previous.number) || "",
-      patientId: patient.patientId || previous.patientId || "",
-      episodeId: validId(patient.episodeId) || validId(previous.episodeId) || "",
-      source: patient.source || previous.source || currentSource(),
-      url: patient.url || previous.url || window.location.href,
-      ts: Date.now()
-    };
+    var previous = existingIndex >= 0 ? list.splice(existingIndex, 1)[0] : null;
+    var incomingSource = patient.source || currentSource();
+
+    var entry;
+    if (previous && previous.source === "consultation" && incomingSource !== "consultation") {
+      /* An episodes/flow selection must not clobber a consultation entry - the
+         consultation is the one that can open the episode summary and ward
+         views. Keep it and only fill in any missing details. */
+      entry = {
+        name: previous.name || patient.name,
+        number: cleanPatientNumber(previous.number) || cleanPatientNumber(patient.number) || "",
+        patientId: validId(previous.patientId) || validId(patient.patientId) || "",
+        episodeId: validId(previous.episodeId) || validId(patient.episodeId) || "",
+        source: "consultation",
+        url: previous.url || patient.url || window.location.href,
+        ts: Date.now()
+      };
+    } else {
+      entry = {
+        name: patient.name,
+        number:
+          cleanPatientNumber(patient.number) ||
+          (previous ? cleanPatientNumber(previous.number) : "") ||
+          "",
+        patientId: patient.patientId || (previous ? previous.patientId : "") || "",
+        episodeId: validId(patient.episodeId) || (previous ? validId(previous.episodeId) : "") || "",
+        source: incomingSource,
+        url: patient.url || (previous ? previous.url : "") || window.location.href,
+        ts: Date.now()
+      };
+    }
 
     list.unshift(entry);
     writeRecents(list);
@@ -324,6 +334,101 @@
     }, 6000);
   }
 
+  /* Set the site's session value (jQuery session plugin + sessionStorage). */
+  function setSessionValue(value, done) {
+    var token = "sl-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    var settled = false;
+
+    function finish() {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onAck);
+      done();
+    }
+
+    function onAck(event) {
+      if (event.source && event.source !== window) return;
+      var data = event.data;
+      if (data && data.type === "streamline:set-session-ack" && data.token === token) {
+        finish();
+      }
+    }
+
+    window.addEventListener("message", onAck);
+    try {
+      window.postMessage(
+        { type: "streamline:set-session", key: SESSION_KEY, value: value, token: token },
+        "*"
+      );
+    } catch (error) {
+      /* ignore */
+    }
+    window.setTimeout(finish, 400);
+  }
+
+  /* The server reads the jQuery-session cookie(s) named "__session:<id>:myVar".
+     Several can linger with stale values, so set them all to the target
+     episode id synchronously before navigating. */
+  function setMyVarCookie(value) {
+    var names = [];
+    String(document.cookie || "").split(";").forEach(function (part) {
+      var name = part.split("=")[0].trim();
+      if (name && /(^|:)myVar$/.test(name)) names.push(name);
+    });
+
+    names.forEach(function (name) {
+      document.cookie = name + "=" + encodeURIComponent(value) + "; path=/; SameSite=Lax";
+    });
+
+    if (!names.length) {
+      document.cookie =
+        "__session:" +
+        Math.random() +
+        ":myVar=" +
+        encodeURIComponent(value) +
+        "; path=/; SameSite=Lax";
+    }
+  }
+
+  /* Open the episode summary in a new tab with myVar pointing at this entry. */
+  function openEpisodeSummary(entry, url) {
+    var episodeId = validId(entry.episodeId) || idFromUrl(entry.url);
+    var patientId = validId(entry.patientId);
+
+    if (!episodeId) {
+      window.open(url, "_blank", "noopener");
+      return;
+    }
+
+    /* Belt and braces: set the client-side session value too. */
+    setMyVarCookie(episodeId);
+    setSessionValue(episodeId, function () {});
+
+    /* The summary is server-session driven. Set the server session with the
+       same request the site uses, then open the summary. Open the tab
+       synchronously so it is not popup-blocked, then point it at the URL
+       once the session is set. */
+    if (!patientId) {
+      window.location.href = url;
+      return;
+    }
+
+    var win = null;
+    try {
+      win = window.open("about:blank", "_blank");
+    } catch (error) {
+      win = null;
+    }
+
+    requestConsultation(episodeId, patientId, "consultation", function () {
+      if (win && !win.closed) {
+        win.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    });
+  }
+
   function openPatient(entry) {
     var episodeId = validId(entry.episodeId) || idFromUrl(entry.url);
     var patientId = validId(entry.patientId);
@@ -333,9 +438,6 @@
       window.location.href = fallback;
       return;
     }
-
-    /* Keep the old direct session write too, in case it is still read. */
-    writeSessionVar(episodeId);
 
     requestConsultation(episodeId, patientId, "consultation", function (response) {
       var result = String(response || "").trim();
@@ -535,15 +637,18 @@
 
       var summaryUrl = episodeSummaryUrl(entry);
       if (summaryUrl) {
-        item.appendChild(
-          buildActionLink(
-            summaryUrl,
-            "📄",
-            "Episode summary (PDF)",
-            entry.name,
-            "sl-recent-pdf"
-          )
+        var pdf = buildActionLink(
+          summaryUrl,
+          "📄",
+          "Episode summary (PDF)",
+          entry.name,
+          "sl-recent-pdf"
         );
+        pdf.addEventListener("click", function (event) {
+          event.preventDefault();
+          openEpisodeSummary(entry, summaryUrl);
+        });
+        item.appendChild(pdf);
       }
 
       if (entry.source === "consultation") {
@@ -575,12 +680,8 @@
 
       /* Give the page's own onchange handler a tick to set myVar. */
       window.setTimeout(function () {
-        var episodeId =
-          episodeIdFromRadio(target) || validId(readSessionVar()) || "";
-
-        if (!validId(readSessionVar()) && episodeId) {
-          writeSessionVar(episodeId);
-        }
+        /* Never fall back to sessionStorage.myVar - it is not the episode id. */
+        var episodeId = episodeIdFromRadio(target) || "";
 
         var row = target.closest("tr");
 
