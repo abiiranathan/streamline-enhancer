@@ -2,12 +2,16 @@
   "use strict";
 
   var MODAL_ID = "showPatientPrescriptionModal";
+  var PRESCRIPTION_BODY_ID = "show_patient_prescriptions";
   var ROOT_CLASS = "sl-printing";
   var MODAL_TITLE = "Berakhah Medical Centre: Prescription";
+  var LOADING_ROW_CLASS = "sl-prescription-loading";
+  var LOADING_TIMEOUT = 20000;
 
   var originalParent = null;
   var originalNext = null;
   var patientName = "";
+  var loadingTimer = null;
 
   /* The patient name is the cell that also holds the "Date Of Admission"
      note; fall back to the second cell of the row. */
@@ -75,6 +79,50 @@
     }
   }
 
+  function getPrescriptionBody() {
+    return document.getElementById(PRESCRIPTION_BODY_ID);
+  }
+
+  function clearLoadingTimer() {
+    if (loadingTimer) {
+      window.clearTimeout(loadingTimer);
+      loadingTimer = null;
+    }
+  }
+
+  function loadingRow(message, spinning) {
+    return (
+      '<tr class="' + LOADING_ROW_CLASS + '"><td colspan="7">' +
+      (spinning ? '<span class="sl-prescription-spinner" aria-hidden="true"></span>' : "") +
+      "<span>" + message + "</span>" +
+      "</td></tr>"
+    );
+  }
+
+  /* The page's click handler fetches the prescription and later replaces the
+     whole tbody, which swaps this loading row out. Emptying the tbody first
+     stops the previous patient's rows from showing while the request is in
+     flight, and the timeout catches a request that never comes back. */
+  function showPrescriptionLoading() {
+    var body = getPrescriptionBody();
+    if (!body) return;
+
+    clearLoadingTimer();
+    body.innerHTML = loadingRow("Loading prescription…", true);
+
+    loadingTimer = window.setTimeout(function () {
+      loadingTimer = null;
+      var current = getPrescriptionBody();
+      if (!current || !current.querySelector("." + LOADING_ROW_CLASS)) return;
+      if (current.querySelector(".sl-prescription-spinner")) {
+        current.innerHTML = loadingRow(
+          "Unable to load this prescription. Please close this window and try again.",
+          false
+        );
+      }
+    }, LOADING_TIMEOUT);
+  }
+
   function sync() {
     var modal = getModal();
     if (modalIsOpen(modal)) {
@@ -84,6 +132,7 @@
     } else {
       document.documentElement.classList.remove(ROOT_CLASS);
       patientName = "";
+      clearLoadingTimer();
       if (modal) restore(modal);
     }
   }
@@ -104,6 +153,8 @@
       var button = target && target.closest ? target.closest(".viewPrescription") : null;
       if (!button) return;
       patientName = patientNameFromRow(button.closest("tr"));
+      setTitle(getModal());
+      showPrescriptionLoading();
     },
     true
   );

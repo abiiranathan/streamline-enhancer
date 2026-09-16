@@ -2,11 +2,18 @@
   "use strict";
 
   var RECENTS_KEY = "sl_recent_patients";
+  var SETTINGS_KEY = "sl_recent_settings";
   var SESSION_KEY = "myVar";
   var MAX_RECENT = 8;
   var FALLBACK_URL = "/consultation/route";
   var WARD_DISPENSING_URL =
     "https://berakhah.streamlinehealth.tech/ward_dispensing_per_chart";
+
+  var QUICK_LINKS = [
+    { label: "Ward List", href: "/wards/select" },
+    { label: "Patient Queue", href: "/patient_flow_monitoring/index" },
+    { label: "List Patients", href: "/patients" }
+  ];
 
   /* ------------------------------------------------------------------ */
   /* Storage helpers                                                     */
@@ -35,6 +42,50 @@
     } catch (error) {
       return "";
     }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Settings                                                            */
+  /* ------------------------------------------------------------------ */
+
+  function readSettings() {
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || "{}");
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function writeSettings(settings) {
+    try {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      /* storage unavailable - ignore */
+    }
+  }
+
+  /* Remove recents from previous days by default; opt out in the panel. */
+  function onlyTodayEnabled() {
+    return readSettings().onlyToday !== false;
+  }
+
+  function setOnlyToday(value) {
+    var settings = readSettings();
+    settings.onlyToday = !!value;
+    writeSettings(settings);
+  }
+
+  function isToday(timestamp) {
+    var value = Number(timestamp);
+    if (!value) return false;
+    var date = new Date(value);
+    var now = new Date();
+    return (
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate()
+    );
   }
 
   /* ------------------------------------------------------------------ */
@@ -158,13 +209,18 @@
     return true;
   }
 
-  /* Drop previously stored entries that were not real patient names. */
+  /* Drop invalid entries and, when "Today only" is on, anything captured on a
+     previous day. Returns the list that should be rendered. */
   function pruneRecents() {
     var list = readRecents();
+    var onlyToday = onlyTodayEnabled();
     var pruned = list.filter(function (entry) {
-      return looksLikePatientName(entry && entry.name);
+      if (!looksLikePatientName(entry && entry.name)) return false;
+      if (onlyToday && !isToday(entry && entry.ts)) return false;
+      return true;
     });
     if (pruned.length !== list.length) writeRecents(pruned);
+    return pruned;
   }
 
   /* Read every "{header} -> {body}" card pair on the consultation page. */
@@ -494,13 +550,50 @@
 
     var header = document.createElement("div");
     header.className = "sl-recent-header";
-    header.textContent = "Recent Patients";
+
+    var headerTitle = document.createElement("span");
+    headerTitle.className = "sl-recent-title";
+    headerTitle.textContent = "Recent Patients";
+    header.appendChild(headerTitle);
+
+    var credit = document.createElement("span");
+    credit.className = "sl-recent-credit";
+    credit.textContent = "Designed by Dr. Abiira";
+    header.appendChild(credit);
+
+    var links = document.createElement("div");
+    links.className = "sl-recent-links";
+    QUICK_LINKS.forEach(function (item) {
+      var link = document.createElement("a");
+      link.className = "sl-recent-link";
+      link.href = item.href;
+      link.textContent = item.label;
+      links.appendChild(link);
+    });
 
     var list = document.createElement("div");
     list.className = "sl-recent-list";
 
     var footer = document.createElement("div");
     footer.className = "sl-recent-footer";
+
+    var setting = document.createElement("label");
+    setting.className = "sl-recent-setting";
+    setting.title = "Remove recent patients that were not seen today";
+
+    var onlyToday = document.createElement("input");
+    onlyToday.type = "checkbox";
+    onlyToday.className = "sl-recent-only-today";
+    onlyToday.checked = onlyTodayEnabled();
+    onlyToday.addEventListener("change", function () {
+      setOnlyToday(onlyToday.checked);
+      render();
+    });
+    setting.appendChild(onlyToday);
+
+    var settingLabel = document.createElement("span");
+    settingLabel.textContent = "Today only";
+    setting.appendChild(settingLabel);
 
     var clear = document.createElement("button");
     clear.type = "button";
@@ -510,9 +603,12 @@
       writeRecents([]);
       render();
     });
+
+    footer.appendChild(setting);
     footer.appendChild(clear);
 
     panel.appendChild(header);
+    panel.appendChild(links);
     panel.appendChild(list);
     panel.appendChild(footer);
 
@@ -578,9 +674,12 @@
   function render() {
     if (!ui) return;
 
-    var list = readRecents();
+    var list = pruneRecents();
     var countEl = ui.querySelector(".sl-recent-count");
     var listEl = ui.querySelector(".sl-recent-list");
+    var onlyTodayEl = ui.querySelector(".sl-recent-only-today");
+
+    if (onlyTodayEl) onlyTodayEl.checked = onlyTodayEnabled();
 
     if (countEl) {
       countEl.textContent = String(list.length);
@@ -825,9 +924,15 @@
 
   function init() {
     buildUI();
-    pruneRecents();
     render();
     watchForPatient();
+
+    /* Re-evaluate "today" when the tab is refocused, so a panel left open
+       across midnight drops the previous day's entries. */
+    window.addEventListener("focus", render);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) render();
+    });
   }
 
   if (document.readyState === "loading") {

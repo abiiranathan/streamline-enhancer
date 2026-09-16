@@ -64,6 +64,32 @@
   vertical-align: top;
 }
 
+/* Loading/error row shown while a patient's prescription is being fetched. */
+#showPatientPrescriptionModal .sl-prescription-loading td {
+  padding: 28px 10px !important;
+  color: #64748b !important;
+  font-weight: 600;
+  text-align: center;
+}
+
+#showPatientPrescriptionModal .sl-prescription-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #334155;
+  border-radius: 50%;
+  vertical-align: -4px;
+  animation: sl-prescription-spin 0.7s linear infinite;
+}
+
+@keyframes sl-prescription-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @page {
   size: auto;
   margin: 8mm;
@@ -153,6 +179,11 @@
 
   /* The close button is meaningless on paper. */
   html.sl-printing #showPatientPrescriptionModal .close {
+    display: none !important;
+  }
+
+  /* A spinner caught mid-load has no place on paper. */
+  html.sl-printing #showPatientPrescriptionModal .sl-prescription-spinner {
     display: none !important;
   }
 

@@ -28,12 +28,20 @@ improvements to the Stre@mline EMR (`*.streamlinehealth.tech`).
 - Quick actions on each entry:
   - **Episode summary** (`/patients/episode_summary/<id>`) as a printable PDF.
   - **Ward dispensing per chart** for consultation entries.
+- Static shortcuts to **Ward List** (`/wards/select`), **Patient Queue**
+  (`/patient_flow_monitoring/index`) and **List Patients** (`/patients`).
+- Recents default to **Today only**: entries captured on a previous day are
+  removed automatically. The toggle in the panel footer persists the choice in
+  `localStorage` under `sl_recent_settings`.
 
 ### Ward dispensing page
 - When the "View Ward Prescription" modal is open, printing produces a single
   page: everything behind the modal is removed, the modal is expanded full
   width, text is forced black, and the table header is styled while the body
   stays black on white.
+- Opening a prescription empties the table and shows a loading spinner until
+  the new patient's rows arrive, so a previously viewed patient's prescription
+  never flashes up (and a timed-out request shows an error instead).
 
 ## Installation
 
