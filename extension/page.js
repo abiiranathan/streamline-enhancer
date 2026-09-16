@@ -1,6 +1,101 @@
 (function () {
   "use strict";
 
+  /* The system selects patients through the jQuery session plugin
+     (`$.session.set("myVar", id)`), not a plain sessionStorage key. Bridge
+     requests from the isolated content script so we set the real value. */
+  function installSessionBridge() {
+    if (window.__streamlineSessionBridge) return;
+    window.__streamlineSessionBridge = true;
+
+    /* Replays the site's paymentCheck() request, which is what actually sets
+       the server-side current episode/patient and returns the target URL. */
+    function selectConsultation(data) {
+      function reply(response) {
+        try {
+          window.postMessage(
+            {
+              type: "streamline:consultation-selection-ack",
+              token: data.token,
+              response: response == null ? "" : String(response)
+            },
+            "*"
+          );
+        } catch (error) {
+          /* ignore */
+        }
+      }
+
+      var $ = window.jQuery;
+      if (!$ || !$.ajax) {
+        reply("");
+        return;
+      }
+
+      try {
+        $.ajax({
+          method: "POST",
+          url: "/check_clinical_consultation_payment",
+          data: {
+            episode_id: data.episodeId,
+            patient_id: data.patientId,
+            action: data.action
+          },
+          success: function (response) {
+            reply(response);
+          },
+          error: function () {
+            reply("");
+          }
+        });
+      } catch (error) {
+        reply("");
+      }
+    }
+
+    window.addEventListener("message", function (event) {
+      if (event.source && event.source !== window) return;
+      var data = event.data;
+      if (!data || !data.type) return;
+
+      if (data.type === "streamline:consultation-selection") {
+        selectConsultation(data);
+        return;
+      }
+
+      if (data.type !== "streamline:set-session") return;
+
+      var key = String(data.key || "");
+      var value = data.value == null ? "" : String(data.value);
+
+      try {
+        if (
+          window.jQuery &&
+          window.jQuery.session &&
+          typeof window.jQuery.session.set === "function"
+        ) {
+          window.jQuery.session.set(key, value);
+        }
+      } catch (error) {
+        /* plugin unavailable */
+      }
+
+      try {
+        window.sessionStorage.setItem(key, value);
+      } catch (error) {
+        /* storage unavailable */
+      }
+
+      try {
+        window.postMessage({ type: "streamline:set-session-ack", token: data.token }, "*");
+      } catch (error) {
+        /* ignore */
+      }
+    });
+  }
+
+  installSessionBridge();
+
   if (window.__streamlineDiagnosisSearchFixApplied) return;
   window.__streamlineDiagnosisSearchFixApplied = true;
 

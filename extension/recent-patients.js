@@ -61,6 +61,19 @@
     return String(text == null ? "" : text).replace(/\s+/g, " ").trim();
   }
 
+  /* "BMC-26-1901 (CASH)" -> "BMC-26-1901" */
+  function cleanPatientNumber(value) {
+    return clean(String(value == null ? "" : value).replace(/\([^)]*\)/g, " "));
+  }
+
+  /* Loose key for comparing patient numbers regardless of punctuation/case. */
+  function normalizeNumber(value) {
+    return String(value == null ? "" : value)
+      .replace(/\([^)]*\)/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
   /* Which page the patient was seen on. */
   function currentSource() {
     var path = String(window.location.pathname || "").toLowerCase();
@@ -113,6 +126,24 @@
       /episode_summary\/(\d+)/.exec(str) ||
       /\/patient_episodes\/(\d+)/.exec(str);
     return match ? validId(match[1]) : "";
+  }
+
+  /* Find a column index by its table header text. */
+  function tableHeaderIndex(row, test) {
+    var table = row && row.closest ? row.closest("table") : null;
+    if (!table) return -1;
+    var headers = table.querySelectorAll("thead th");
+    for (var i = 0; i < headers.length; i++) {
+      if (test.test(normalize(headers[i].textContent))) return i;
+    }
+    return -1;
+  }
+
+  function rowCellText(row, index) {
+    if (!row || index < 0) return "";
+    var cells = row.querySelectorAll("td");
+    if (index >= cells.length) return "";
+    return clean(cells[index].textContent);
   }
 
   /* Reject values that are clearly not a person's name (e.g. the episode
@@ -176,10 +207,7 @@
 
   function isConsultationPage() {
     if (/consultation/i.test(window.location.pathname)) return true;
-    return (
-      document.getElementById("current_patient_id") !== null ||
-      document.querySelector(".consultation-pat-table") !== null
-    );
+    return document.querySelector(".consultation-pat-table") !== null;
   }
 
   /* The clerkship/consultation page renders the patient as cards. */
@@ -199,7 +227,9 @@
     return {
       name: name,
       number: number,
-      patientId: inputValue("current_patient_id"),
+      patientId: validId(inputValue("current_patient_id")),
+      /* The per-patient episode id is server-rendered here. sessionStorage
+         myVar is only the site's UI selection and is not per-patient. */
       episodeId: validId(inputValue("current_episode_id")),
       source: currentSource(),
       url: window.location.href
@@ -213,8 +243,8 @@
     var patientName = normalize(patient.name);
     if (!entryName || !patientName || entryName !== patientName) return false;
 
-    var entryNumber = normalize(entry.number);
-    var patientNumber = normalize(patient.number);
+    var entryNumber = normalizeNumber(entry.number);
+    var patientNumber = normalizeNumber(patient.number);
     if (!entryNumber || !patientNumber) return true;
     return entryNumber === patientNumber;
   }
@@ -234,7 +264,7 @@
     var previous = existingIndex >= 0 ? list.splice(existingIndex, 1)[0] : {};
     var entry = {
       name: patient.name,
-      number: patient.number || previous.number || "",
+      number: cleanPatientNumber(patient.number) || cleanPatientNumber(previous.number) || "",
       patientId: patient.patientId || previous.patientId || "",
       episodeId: validId(patient.episodeId) || validId(previous.episodeId) || "",
       source: patient.source || previous.source || currentSource(),
@@ -247,15 +277,84 @@
     render();
   }
 
+  /* Prefer the stored id (captured from the session myVar, which is what the
+     route uses), then fall back to an id embedded in the destination URL. */
+  function resolveEntryId(entry) {
+    return validId(entry.episodeId) || idFromUrl(entry.url) || "";
+  }
+
+  /* Ask the page to POST the same selection the site's paymentCheck() makes.
+     The server sets its session and returns the URL to open. */
+  function requestConsultation(episodeId, patientId, action, done) {
+    var token = "sl-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    var settled = false;
+
+    function finish(response) {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onAck);
+      done(response);
+    }
+
+    function onAck(event) {
+      if (event.source && event.source !== window) return;
+      var data = event.data;
+      if (data && data.type === "streamline:consultation-selection-ack" && data.token === token) {
+        finish(data.response);
+      }
+    }
+
+    window.addEventListener("message", onAck);
+    try {
+      window.postMessage(
+        {
+          type: "streamline:consultation-selection",
+          token: token,
+          episodeId: episodeId,
+          patientId: patientId,
+          action: action
+        },
+        "*"
+      );
+    } catch (error) {
+      /* ignore */
+    }
+    window.setTimeout(function () {
+      finish("");
+    }, 6000);
+  }
+
   function openPatient(entry) {
-    if (entry.episodeId) writeSessionVar(entry.episodeId);
-    window.location.href = entry.url || FALLBACK_URL;
+    var episodeId = validId(entry.episodeId) || idFromUrl(entry.url);
+    var patientId = validId(entry.patientId);
+    var fallback = entry.url || FALLBACK_URL;
+
+    if (!episodeId || !patientId) {
+      window.location.href = fallback;
+      return;
+    }
+
+    /* Keep the old direct session write too, in case it is still read. */
+    writeSessionVar(episodeId);
+
+    requestConsultation(episodeId, patientId, "consultation", function (response) {
+      var result = String(response || "").trim();
+      if (result && result !== "unpaid") {
+        window.location.href = result;
+        return;
+      }
+      if (result === "unpaid") {
+        window.alert("This consultation cannot be opened yet because it is unpaid.");
+        return;
+      }
+      window.location.href = fallback;
+    });
   }
 
   /* Episode summary renders a printable PDF. The trailing id is the same
      value the system keeps in sessionStorage.myVar. */
   function episodeSummaryUrl(entry) {
-    var id = validId(entry.episodeId) || idFromUrl(entry.url) || validId(readSessionVar());
+    var id = resolveEntryId(entry);
     if (!id) return "";
     return "/patients/episode_summary/" + encodeURIComponent(id);
   }
@@ -508,10 +607,20 @@
           }
         }
 
-        /* Date/time links and other non-name cells must not be recorded. */
-        if (!chosen) return;
+        var name = chosen ? chosen.name : "";
+        var url = chosen ? chosen.href : "";
 
-        var url = chosen.href;
+        /* Many rows (patient flow) have no link: read the "Name" column. */
+        if (!name && row) {
+          var nameIndex = tableHeaderIndex(row, /\bname\b/);
+          if (nameIndex < 0) nameIndex = tableHeaderIndex(row, /full\s*names?/);
+          var cellName = rowCellText(row, nameIndex);
+          if (looksLikePatientName(cellName)) name = cellName;
+        }
+
+        /* Date/time links and other non-name cells must not be recorded. */
+        if (!name) return;
+
         if (!url && row) {
           var anchors = row.querySelectorAll("a[href]");
           for (var j = 0; j < anchors.length; j++) {
@@ -522,10 +631,24 @@
           }
         }
 
+        var number = row ? rowCellText(row, tableHeaderIndex(row, /patient\s*(no|number|#)/)) : "";
+
+        /* The patient id lives in a hidden input keyed by the episode id
+           (#patient_id_<episodeId>), same source the site's paymentCheck uses. */
+        var patientId = "";
+        if (episodeId) {
+          var patientInput = document.getElementById("patient_id_" + episodeId);
+          if (patientInput) patientId = validId(patientInput.value);
+        }
+        if (!patientId && row) {
+          var idInput = row.querySelector('[id^="patient_id_"]');
+          if (idInput) patientId = validId(idInput.value);
+        }
+
         remember({
-          name: chosen.name,
-          number: "",
-          patientId: "",
+          name: name,
+          number: number,
+          patientId: patientId,
           episodeId: episodeId,
           source: currentSource(),
           url: url || window.location.href
